@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TypeBetter — Typing Practice</title>
+  <meta name="description" content="A lightweight typing practice website in a single HTML file." />
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #111833;
+      --muted: #8aa0c7;
+      --text: #e7eefc;
+      --accent: #7aa2ff;
+      --good: #5ad39d;
+      --bad: #ff6b6b;
+      --warn: #ffb454;
+      --kbd: #1a2347;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 70% -10%, #1a2350 0%, var(--bg) 60%);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .app {
+      width: min(1100px, 100%);
+      display: grid;
+      gap: 16px;
+    }
+    .header {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    }
+    .brand { font-weight: 800; letter-spacing: .5px; font-size: clamp(18px, 2.6vw, 24px); }
+    .brand span { color: var(--accent); }
+    .controls {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .pill {
+      background: linear-gradient(180deg, #1a2347, var(--panel));
+      border: 1px solid #2a376a;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      user-select: none;
+      transition: transform .05s ease-in-out, filter .15s;
+      font-weight: 600; font-size: 14px;
+    }
+    .pill.active { outline: 2px solid var(--accent); }
+    .pill:active { transform: translateY(1px) scale(0.99); filter: brightness(0.95); }
+    select.pill, input.pill { appearance: none; }
+
+    .panel {
+      background: linear-gradient(180deg, #0f1630, var(--panel));
+      border: 1px solid #2a376a;
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+    .metric {
+      background: var(--kbd);
+      border: 1px solid #2a376a;
+      border-radius: 14px;
+      padding: 12px;
+      text-align: center;
+    }
+    .metric .label { color: var(--muted); font-size: 12px; letter-spacing: .4px; }
+    .metric .value { font-size: clamp(18px, 5vw, 28px); font-weight: 800; }
+
+    .text-area { min-height: 160px; display: grid; align-items: center; justify-items: center; padding: 16px; }
+    .text-wrap {
+      font-size: clamp(18px, 3.5vw, 26px);
+      line-height: 1.6;
+      letter-spacing: .2px;
+      max-width: 100%;
+      word-break: break-word;
+      padding: 8px 4px;
+    }
+    .text-wrap .char { opacity: .6; }
+    .text-wrap .char.current { border-bottom: 2px solid var(--accent); opacity: 1; }
+    .text-wrap .char.correct { color: var(--good); opacity: 1; }
+    .text-wrap .char.incorrect { color: var(--bad); opacity: 1; background: #2a1530; }
+    .text-wrap .char.space { padding: 0 .22em; }
+
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .grow { flex: 1; }
+
+    textarea.custom { width: 100%; min-height: 80px; resize: vertical; background: #0c1433; color: var(--text); border: 1px solid #2a376a; border-radius: 12px; padding: 12px; font-size: 14px; }
+
+    .keyboard { display: grid; gap: 6px; margin-top: 8px; }
+    .kb-row { display: grid; grid-auto-flow: column; gap: 6px; }
+    .key {
+      background: var(--kbd);
+      border: 1px solid #2a376a; border-bottom: 2px solid #213162;
+      border-radius: 10px; padding: 10px 8px; text-align: center; min-width: 28px;
+      filter: brightness(1);
+    }
+    .key.active { outline: 2px solid var(--accent); filter: brightness(1.4); }
+    .key.homerow { background: #1a2a59; }
+
+    .footer { color: var(--muted); text-align: center; font-size: 12px; margin-top: 8px; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 700px) {
+      .metrics { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="brand">Type<span>Better</span></div>
+      <div class="controls">
+        <button class="pill" data-mode="words">Words</button>
+        <button class="pill" data-mode="sentences">Sentences</button>
+        <button class="pill" data-mode="custom">Custom</button>
+        <select class="pill" id="length">
+          <option value="10">10</option>
+          <option value="25" selected>25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <select class="pill" id="layout">
+          <option value="qwerty" selected>QWERTY</option>
+          <option value="homerow">Home Row</option>
+          <option value="numbers">Numbers</option>
+        </select>
+        <button class="pill" id="reset">Restart (R)</button>
+        <button class="pill" id="sound">Sound: Off</button>
+      </div>
+    </div>
+
+    <div class="panel metrics">
+      <div class="metric"><div class="label">WPM</div><div class="value" id="wpm">0</div></div>
+      <div class="metric"><div class="label">Accuracy</div><div class="value" id="acc">100%</div></div>
+      <div class="metric"><div class="label">Time</div><div class="value" id="time">0s</div></div>
+      <div class="metric"><div class="label">Errors</div><div class="value" id="err">0</div></div>
+    </div>
+
+    <div class="panel text-area">
+      <div id="text" class="text-wrap" aria-live="polite"></div>
+      <textarea id="custom" class="custom hidden" placeholder="Paste or type your own practice text here, then press Start."></textarea>
+    </div>
+
+    <div class="panel row">
+      <button class="pill" id="start">Start (Enter)</button>
+      <button class="pill" id="pause">Pause (Esc)</button>
+      <div class="grow"></div>
+      <div class="pill" id="hint">Show Hints</div>
+    </div>
+
+    <div class="panel keyboard" id="keyboard"></div>
+
+    <div class="footer">Tip: Keep wrists relaxed. Aim for accuracy first; speed will follow. Press <b>R</b> to restart, <b>Enter</b> to start, <b>Esc</b> to pause.</div>
+  </div>
+
+  <audio id="click" preload="auto">
+    <source src="data:audio/wav;base64,UklGRjQAAABXQVZFZm10IBIAAABAAEAQBQAAEA8AABEVAAACABMYWF2ZQAAAAAAAAD//w8PDw8PDw8PDw8PDw8PDw8PDw8PDw8P" type="audio/wav">
+  </audio>
+
+  <script>
+    // ===== Utility data =====
+    const WORDS = "the quick brown fox jumps over the lazy dog laptop river shadow crystal music oxygen galaxy oxygen jacket funny velvet marble window garden island bright lemon tiger zipper quick story puzzle cinema planet kitten".split(" ");
+    const SENTENCES = [
+      "Practice makes progress, not perfection.",
+      "Typing with calm focus builds lasting speed.",
+      "Small, steady improvements add up over time.",
+      "Keep your eyes on the text, not your hands.",
+      "Accuracy first, speed second — rhythm last."
+    ];
+    const LAYOUTS = {
+      qwerty: [
+        "` 1 2 3 4 5 6 7 8 9 0 - =",
+        "q w e r t y u i o p [ ] \\",
+        "a s d f g h j k l ; '",
+        "z x c v b n m , . /"
+      ],
+      homerow: [
+        "f d s a j k l ;",
+        "g h",
+      ],
+      numbers: [
+        "1 2 3 4 5 6 7 8 9 0"
+      ]
+    };
+
+    // ===== DOM =====
+    const elText = document.getElementById('text');
+    const elWpm = document.getElementById('wpm');
+    const elAcc = document.getElementById('acc');
+    const elTime = document.getElementById('time');
+    const elErr = document.getElementById('err');
+    const elStart = document.getElementById('start');
+    const elPause = document.getElementById('pause');
+    const elReset = document.getElementById('reset');
+    const elSound = document.getElementById('sound');
+    const elHint = document.getElementById('hint');
+    const elLength = document.getElementById('length');
+    const elLayout = document.getElementById('layout');
+    const elKeyboard = document.getElementById('keyboard');
+    const elCustom = document.getElementById('custom');
+    const elAudio = document.getElementById('click');
+
+    // ===== State =====
+    let state = {
+      mode: 'words',
+      length: parseInt(elLength.value, 10),
+      started: false,
+      paused: false,
+      idx: 0,
+      error: 0,
+      correct: 0,
+      startTime: 0,
+      elapsed: 0,
+      timer: null,
+      target: '',
+      showHints: false,
+      sound: false
+    };
+
+    // ===== Helpers =====
+    const randomChoice = arr => arr[Math.floor(Math.random()*arr.length)];
+
+    function makeWords(n){ return Array.from({length:n}, () => randomChoice(WORDS)).join(' '); }
+    function makeSentences(n){
+      let text = [];
+      for (let i=0;i<n;i++) text.push(randomChoice(SENTENCES));
+      return text.join(' ');
+    }
+
+    function makeTarget(){
+      if(state.mode==='words') return makeWords(state.length);
+      if(state.mode==='sentences') return makeSentences(Math.max(1, Math.round(state.length/10)));
+      if(state.mode==='custom') return (elCustom.value || "Type your own text above.").replace(/\s+/g,' ').trim();
+      return makeWords(state.length);
+    }
+
+    function renderText(){
+      elText.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      const chars = state.target.split('');
+      chars.forEach((ch,i)=>{
+        const span = document.createElement('span');
+        span.className = 'char' + (ch===' ' ? ' space' : '');
+        span.textContent = ch === ' ' ? ' ' : ch;
+        if(i===state.idx) span.classList.add('current');
+        frag.appendChild(span);
+      });
+      elText.appendChild(frag);
+    }
+
+    function updateCursor(prevIdx){
+      const children = elText.children;
+      if(children[prevIdx]) children[prevIdx].classList.remove('current');
+      if(children[state.idx]) children[state.idx].classList.add('current');
+    }
+
+    function setClassAt(i, cls){
+      const el = elText.children[i];
+      if(!el) return;
+      el.classList.remove('correct','incorrect');
+      if(cls) el.classList.add(cls);
+    }
+
+    function reset(){
+      state.idx=0; state.error=0; state.correct=0; state.elapsed=0; state.started=false; state.paused=false; clearInterval(state.timer);
+      state.target = makeTarget();
+      renderText();
+      updateMetrics();
+    }
+
+    function start(){
+      if(state.started && !state.paused) return;
+      state.started = true; state.paused = false;
+      state.startTime = performance.now() - state.elapsed;
+      state.timer = setInterval(()=>{
+        state.elapsed = performance.now() - state.startTime;
+        updateMetrics();
+      }, 100);
+    }
+
+    function pause(){
+      if(!state.started) return;
+      state.paused = true; clearInterval(state.timer);
+      updateMetrics();
+    }
+
+    function updateMetrics(){
+      const minutes = (state.elapsed/1000)/60 || 0.0001;
+      const wpm = Math.max(0, Math.round(((state.correct)/5) / minutes));
+      const total = Math.max(1, state.correct + state.error);
+      const acc = Math.max(0, Math.min(100, Math.round((state.correct/total)*100)));
+      elWpm.textContent = wpm;
+      elAcc.textContent = acc + '%';
+      elTime.textContent = Math.floor(state.elapsed/1000) + 's';
+      elErr.textContent = state.error;
+    }
+
+    function pressSound(){ if(state.sound){ try{ elAudio.currentTime=0; elAudio.play(); }catch(e){} } }
+
+    function onKey(e){
+      if(e.key === 'Enter'){ start(); return; }
+      if(e.key === 'Escape'){ pause(); return; }
+      if(e.key.toLowerCase() === 'r'){ reset(); return; }
+      if(!state.started || state.paused) return;
+
+      const expected = state.target[state.idx];
+      const key = e.key.length===1 ? e.key : (e.key==='Space' ? ' ' : null);
+      if(key===null) return;
+
+      const prevIdx = state.idx;
+      if(key === expected){
+        setClassAt(state.idx, 'correct');
+        state.idx++; state.correct++;
+        pressSound();
+      } else {
+        setClassAt(state.idx, 'incorrect');
+        state.error++;
+      }
+      updateCursor(prevIdx);
+      updateMetrics();
+
+      if(state.idx >= state.target.length){
+        clearInterval(state.timer);
+        state.started=false; state.paused=false;
+        celebrate();
+      }
+      if(state.showHints) flashKey(e.key);
+    }
+
+    // ===== Virtual Keyboard =====
+    function buildKeyboard(){
+      elKeyboard.innerHTML='';
+      const layers = LAYOUTS[elLayout.value] || LAYOUTS.qwerty;
+      layers.forEach(row=>{
+        const rowEl = document.createElement('div');
+        rowEl.className='kb-row';
+        row.split(' ').forEach(k=>{
+          const keyEl = document.createElement('div');
+          keyEl.className='key';
+          if('asdfjkl;'.includes(k)) keyEl.classList.add('homerow');
+          keyEl.dataset.key = k;
+          keyEl.textContent = k.toUpperCase();
+          rowEl.appendChild(keyEl);
+        });
+        elKeyboard.appendChild(rowEl);
+      });
+    }
+
+    function flashKey(k){
+      const query = `[data-key="${CSS.escape(k.toLowerCase())}"]`;
+      const el = elKeyboard.querySelector(query);
+      if(!el) return;
+      el.classList.add('active');
+      setTimeout(()=> el.classList.remove('active'), 120);
+    }
+
+    window.addEventListener('keydown', e=>{
+      const k = e.key.length===1 ? e.key : e.key.toLowerCase();
+      flashKey(k);
+    });
+
+    // ===== Party =====
+    function celebrate(){
+      const confetti = document.createElement('div');
+      Object.assign(confetti.style, {
+        position:'fixed', inset:0, pointerEvents:'none', zIndex: 9999
+      });
+      document.body.appendChild(confetti);
+      const N = 100;
+      for(let i=0;i<N;i++){
+        const p = document.createElement('div');
+        Object.assign(p.style, {
+          position:'absolute', width:'6px', height:'12px',
+          background:`hsl(${Math.random()*360}, 90%, 60%)`,
+          left: Math.random()*100+'%', top: '-10px',
+          transform: `translateY(${Math.random()*20}px)`,
+          opacity: 1, borderRadius:'2px'
+        });
+        confetti.appendChild(p);
+        const dy = 100 + Math.random()*120;
+        p.animate([
+          { transform:`translateY(0) rotate(0deg)`, top:'-10px' },
+          { transform:`translateY(${dy}vh) rotate(${Math.random()*720-360}deg)`, top:'90vh' }
+        ], { duration: 1200 + Math.random()*800, easing:'cubic-bezier(.2,.7,.2,1)'}).onfinish = ()=> p.remove();
+      }
+      setTimeout(()=> confetti.remove(), 2200);
+    }
+
+    // ===== Mode switching =====
+    function setMode(mode){
+      state.mode = mode;
+      document.querySelectorAll('[data-mode]').forEach(btn=>{
+        btn.classList.toggle('active', btn.dataset.mode===mode);
+      });
+      elCustom.classList.toggle('hidden', mode!=='custom');
+      reset();
+    }
+
+    // ===== Events =====
+    document.addEventListener('keydown', onKey);
+    elStart.addEventListener('click', start);
+    elPause.addEventListener('click', pause);
+    elReset.addEventListener('click', reset);
+    elLength.addEventListener('change', ()=>{ state.length=parseInt(elLength.value,10); reset(); });
+    elLayout.addEventListener('change', ()=>{ buildKeyboard(); });
+    elSound.addEventListener('click', ()=>{ state.sound=!state.sound; elSound.textContent = 'Sound: ' + (state.sound?'On':'Off'); });
+    elHint.addEventListener('click', ()=>{ state.showHints=!state.showHints; elHint.textContent = state.showHints? 'Hide Hints' : 'Show Hints'; });
+
+    document.querySelectorAll('[data-mode]').forEach(btn=> btn.addEventListener('click', ()=> setMode(btn.dataset.mode)));
+
+    // ===== Init =====
+    buildKeyboard();
+    setMode('words');
+  </script>
+</body>
+</html>
